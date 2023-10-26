@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  The installer distribution allows you to add download channel information to your installation packages. This can be useful for attributing data to specific distribution channels in the future. 
+Parameters:
+  S3Bucket:
+    Description: The name of the S3 bucket use to store installer
+    Type: String
+    MinLength: 3
+    MaxLength: 63
+  S3BucketRegion:
+    Description: The region of the S3 bucket use to store installer
+    Type: String
+    MinLength: 3
+    MaxLength: 63
+
+Resources:
+  CloudFrontOriginIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: origin identity for installer distribution
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginIdentity}
+            Action: s3:GetObject
+            Resource: !Sub arn:aws:s3:::${S3Bucket}/*
+  ReURLFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      AutoPublish: true
+      FunctionCode: !Sub |
+        function handler(event) {
+          var request = event.request;
+          var reg = /\_[A-Za-z0-9]+\.exe/g
+          request.uri = request.uri.replace(reg, '.exe')
+          return request;
+        }
+      FunctionConfig:
+        Comment: !Sub 'ReURL to OriginalURL'
+        Runtime: cloudfront-js-1.0
+      Name: !Sub "ReURL-Function"
+  InstallerDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !Sub ${S3Bucket}.s3.${S3BucketRegion}.amazonaws.com
+            Id: installer-bucket-access
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${CloudFrontOriginIdentity}
+        Enabled: true
+        Comment: installer distribution
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+          TargetOriginId: installer-bucket-access
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          ViewerProtocolPolicy: redirect-to-https
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt ReURLFunction.FunctionMetadata.FunctionARN
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+Outputs:
+  CDNDomain:
+    Description: installer access URL
+    Value: !GetAtt InstallerDistribution.DomainName
