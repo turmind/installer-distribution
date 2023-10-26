@@ -14,6 +14,22 @@ Parameters:
     MinLength: 3
     MaxLength: 63
 
+Metadata:
+  AWS::ServerlessRepo::Application:
+    Name: installer-distribution
+    Description: >
+      installer-distribution
+      
+      The installer distribution allows you to add download channel information to your installation packages. This can be useful for attributing data to specific distribution channels in the future. 
+    Author: Huang Jidong
+    SpdxLicenseId: MIT-0
+    LicenseUrl: LICENSE
+    ReadmeUrl: README.md
+    Labels: ['s3', 'cloudfront', 'functions', 'distribution', 'installer']
+    HomePageUrl: https://github.com/turmind/installer-distribution
+    SemanticVersion: 1.0.1
+    SourceCodeUrl: https://github.com/turmind/installer-distribution
+
 Resources:
   CloudFrontOriginIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
