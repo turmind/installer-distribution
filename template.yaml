@@ -8,11 +8,6 @@ Parameters:
     Type: String
     MinLength: 3
     MaxLength: 63
-  S3BucketRegion:
-    Description: The region of the S3 bucket use to store installer
-    Type: String
-    MinLength: 3
-    MaxLength: 63
 
 Metadata:
   AWS::ServerlessRepo::Application:
@@ -27,7 +22,7 @@ Metadata:
     ReadmeUrl: README.md
     Labels: ['s3', 'cloudfront', 'functions', 'distribution', 'installer']
     HomePageUrl: https://github.com/turmind/installer-distribution
-    SemanticVersion: 1.0.1
+    SemanticVersion: 1.0.2
     SourceCodeUrl: https://github.com/turmind/installer-distribution
 
 Resources:
@@ -37,6 +32,7 @@ Resources:
       CloudFrontOriginAccessIdentityConfig:
         Comment: origin identity for installer distribution
   BucketPolicy:
+    DependsOn: CloudFrontOriginIdentity
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref S3Bucket
@@ -68,7 +64,7 @@ Resources:
     Properties:
       DistributionConfig:
         Origins:
-          - DomainName: !Sub ${S3Bucket}.s3.${S3BucketRegion}.amazonaws.com
+          - DomainName: !Sub ${S3Bucket}.s3.${AWS::Region}.amazonaws.com
             Id: installer-bucket-access
             S3OriginConfig:
               OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${CloudFrontOriginIdentity}
