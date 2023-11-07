@@ -22,19 +22,28 @@ Metadata:
     ReadmeUrl: README.md
     Labels: ['s3', 'cloudfront', 'functions', 'distribution', 'installer']
     HomePageUrl: https://github.com/turmind/installer-distribution
-    SemanticVersion: 1.0.3
+    SemanticVersion: 1.0.2
     SourceCodeUrl: https://github.com/turmind/installer-distribution
 
 Resources:
-  CloudFrontOriginAccessControl:
-    Type: AWS::CloudFront::OriginAccessControl
+  CloudFrontOriginIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Properties:
-      OriginAccessControlConfig:
-        Description: origin access for installer distribution
-        Name: install-distribution-access
-        OriginAccessControlOriginType: s3
-        SigningBehavior: always
-        SigningProtocol: sigv4
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: origin identity for installer distribution
+  BucketPolicy:
+    DependsOn: CloudFrontOriginIdentity
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginIdentity}
+            Action: s3:GetObject
+            Resource: !Sub arn:aws:s3:::${S3Bucket}/*
   ReURLFunction:
     Type: AWS::CloudFront::Function
     Properties:
@@ -58,8 +67,7 @@ Resources:
           - DomainName: !Sub ${S3Bucket}.s3.${AWS::Region}.amazonaws.com
             Id: installer-bucket-access
             S3OriginConfig:
-              OriginAccessIdentity: ''
-            OriginAccessControlId: !GetAtt CloudFrontOriginAccessControl.Id
+              OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${CloudFrontOriginIdentity}
         Enabled: true
         Comment: installer distribution
         DefaultCacheBehavior:
@@ -74,21 +82,7 @@ Resources:
               FunctionARN: !GetAtt ReURLFunction.FunctionMetadata.FunctionARN
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
-  BucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref S3Bucket
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: cloudfront.amazonaws.com
-            Action: s3:GetObject
-            Resource: !Sub arn:aws:s3:::${S3Bucket}/*
-            Condition:
-              StringEquals:
-                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${InstallerDistribution}
+
 Outputs:
   CDNDomain:
     Description: installer access URL
