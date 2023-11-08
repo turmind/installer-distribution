@@ -22,7 +22,7 @@ Metadata:
     ReadmeUrl: README.md
     Labels: ['s3', 'cloudfront', 'functions', 'distribution', 'installer']
     HomePageUrl: https://github.com/turmind/installer-distribution
-    SemanticVersion: 1.0.2
+    SemanticVersion: 1.0.3
     SourceCodeUrl: https://github.com/turmind/installer-distribution
 
 Resources:
@@ -51,7 +51,7 @@ Resources:
       FunctionCode: !Sub |
         function handler(event) {
           var request = event.request;
-          var reg = /\_[A-Za-z0-9]+\.exe/g
+          var reg = /\_[A-Za-z0-9\-]+\.exe/g
           request.uri = request.uri.replace(reg, '.exe')
           return request;
         }
